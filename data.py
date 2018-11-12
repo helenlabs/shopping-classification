@@ -28,11 +28,20 @@ import numpy as np
 from keras.utils.np_utils import to_categorical
 
 from misc import get_logger, Option
-opt = Option('./config.json')
 
-TRAIN_DATA_LIST = ['../train.chunk.0%d' % i for i in range(1, 10)]
-DEV_DATA_LIST = ['../dev.chunk.01']
-TEST_DATA_LIST = ['../test.chunk.01', '../test.chunk.02']
+from util.config import load_config
+opt = load_config('./config/myconfig.json')
+
+TRAIN_DATA_FILE_LIST = ['train.chunk.0%d' % i for i in range(1, 10)]
+DEV_DATA_FILE_LIST = ['dev.chunk.01']
+TEST_DATA_FILE_LIST = ['test.chunk.01', 'test.chunk.02']
+
+TRAIN_DATA_LIST = ["%s/%s" % (opt.data_dir, filename) for filename in TRAIN_DATA_FILE_LIST]
+DEV_DATA_LIST = ["%s/%s" % (opt.data_dir, filename) for filename in DEV_DATA_FILE_LIST]
+TEST_DATA_LIST = ["%s/%s" % (opt.data_dir, filename) for filename in TEST_DATA_FILE_LIST]
+
+
+DATA_COLUMN = ['pid','product','brand','model','maker','price','updttm','bcateid','mcateid', 'scateid', 'dcateid', 'img_feat']
 
 re_sc = re.compile('[\!@#$%\^&\*\(\)-=\[\]\{\}\.,/\?~\+\'"|]')
 
@@ -267,7 +276,8 @@ class Data:
         train_size = int(np.count_nonzero(train_indices))
         return train_indices, train_size
 
-    def make_db(self, data_name, output_dir='data/train', train_ratio=0.8):
+    def make_db(self, data_name, train_ratio=0.8):
+        output_dir = opt.dataset_dir    # output_dir 을 파라미터에서 받아오지 않고, conf에서 읽도록 변경..
         if data_name == 'train':
             div = 'train'
             data_path_list = TRAIN_DATA_LIST
@@ -376,7 +386,30 @@ class Data:
         self.logger.info('data: %s' % os.path.join(output_dir, 'data.h5py'))
         self.logger.info('meta: %s' % os.path.join(output_dir, 'meta'))
 
+
+
+def read_one_sz_data(h):
+    sz = h['pid'].shape[0]
+
+    offset=0
+    for i in range(sz):
+        print ('data %d:' % (i))
+        for col in DATA_COLUMN:
+            data=h[col][i]
+            print('%s: %s' % (col, data))
+
+    offset += sz
+
+
 if __name__ == '__main__':
+    '''  파일읽기 샘플..
+    if not os.path.exists('/media/HDD/project/kakao/dataset/train.chunk.01'):
+        print('FILE NOT EXIST')
+    else:
+        print('FILE EXIST.. GO ON!!')
+    h = h5py.File('/media/HDD/project/kakao/dataset/train.chunk.01', 'r')['train']
+    read_one_sz_data(h)'''
+
     data = Data()
     fire.Fire({'make_db': data.make_db,
                'build_y_vocab': data.build_y_vocab})
